@@ -1,1 +1,1015 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analizador Inteligente de Planillas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --card-bg: rgba(15, 23, 42, 0.85);
+      --card-border: rgba(148, 163, 184, 0.2);
+      --text: #f8fafc;
+      --text-muted: rgba(226, 232, 240, 0.75);
+      --accent: #38bdf8;
+      --accent-strong: #0ea5e9;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --positive: #4ade80;
+      --negative: #f87171;
+      font-size: 16px;
+    }
 
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.15), transparent 45%),
+                  radial-gradient(circle at bottom, rgba(14, 165, 233, 0.1), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 3.5rem 1.5rem 2rem;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    header p {
+      color: var(--text-muted);
+      margin: 0.75rem auto 0;
+      max-width: 40rem;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem 3rem;
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 1.75rem;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+    }
+
+    .card h2 {
+      margin: 0 0 1rem;
+      font-size: 1.2rem;
+    }
+
+    .uploader {
+      border: 2px dashed rgba(56, 189, 248, 0.4);
+      border-radius: 24px;
+      padding: 3.5rem 1.5rem;
+      text-align: center;
+      transition: border-color 0.3s ease, background 0.3s ease, transform 0.2s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .uploader:hover {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .uploader.dragging {
+      border-color: var(--accent-strong);
+      background: rgba(56, 189, 248, 0.15);
+      transform: scale(0.99);
+    }
+
+    .uploader input {
+      display: none;
+    }
+
+    .uploader .icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(14, 165, 233, 0.1));
+      margin: 0 auto 1.5rem;
+      display: grid;
+      place-items: center;
+      font-size: 2rem;
+      color: var(--accent);
+    }
+
+    .uploader strong {
+      display: block;
+      font-size: 1.05rem;
+    }
+
+    .uploader span {
+      color: var(--text-muted);
+      display: block;
+      margin-top: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .upload-button {
+      margin-top: 1.75rem;
+      padding: 0.85rem 1.75rem;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.9), rgba(14, 165, 233, 0.9));
+      color: var(--bg);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+      box-shadow: 0 15px 30px rgba(14, 165, 233, 0.35);
+    }
+
+    .upload-button:focus {
+      outline: 2px solid rgba(56, 189, 248, 0.9);
+      outline-offset: 3px;
+    }
+
+    .upload-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 36px rgba(14, 165, 233, 0.45);
+    }
+
+    .grid {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .text-muted {
+      color: var(--text-muted);
+    }
+
+    .grid.two-cols {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      margin-right: 0.6rem;
+    }
+
+    .metrics-grid {
+      display: grid;
+      gap: 1.1rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .metric-card {
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      padding: 1rem 1.2rem;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.65);
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .metric-card .label {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-card .value {
+      font-size: 1.6rem;
+      font-weight: 600;
+    }
+
+    .metric-card .muted {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .insights-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .insights-list li {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.15);
+      border-radius: 16px;
+      padding: 1rem 1.2rem;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+      align-items: flex-end;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      min-width: 160px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    select, input[type="range"] {
+      padding: 0.6rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    select:focus, input[type="range"]:focus {
+      border-color: var(--accent);
+    }
+
+    .range-value {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    canvas {
+      max-width: 100%;
+    }
+
+    .table-container {
+      max-height: 380px;
+      overflow: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      font-size: 0.92rem;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: rgba(15, 23, 42, 0.95);
+      z-index: 1;
+    }
+
+    tr:nth-child(even) td {
+      background: rgba(148, 163, 184, 0.06);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .placeholder {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 1.5rem 0;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 720px) {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tablero Inteligente de Excel</h1>
+    <p>Cargá tu planilla y dejá que la IA identifique patrones, resuma los indicadores clave y genere visualizaciones dinámicas similares a Power BI en cuestión de segundos.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <label class="uploader" id="dropZone">
+        <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+        <div class="icon">📊</div>
+        <strong>Soltá tu archivo o hacé clic para seleccionar</strong>
+        <span>Formatos compatibles: .xlsx, .xls, .csv (sin límite de tamaño)</span>
+        <button type="button" class="upload-button" id="uploadButton">Elegir archivo desde tu dispositivo</button>
+      </label>
+    </section>
+
+    <section class="card hidden" id="overviewCard">
+      <div class="grid two-cols">
+        <div>
+          <h2>Resumen Inteligente</h2>
+          <p id="datasetSummary" class="text-muted"></p>
+          <div id="datasetChips"></div>
+        </div>
+        <div>
+          <h2>Insights generados por IA</h2>
+          <ul class="insights-list" id="insightsList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card hidden" id="metricsCard">
+      <h2>Métricas clave detectadas</h2>
+      <div class="metrics-grid" id="metricsGrid"></div>
+    </section>
+
+    <section class="card hidden" id="vizCard">
+      <div class="controls">
+        <div class="control">
+          <label for="dimensionSelect">Dimensión</label>
+          <select id="dimensionSelect"></select>
+        </div>
+        <div class="control" id="metricControl">
+          <label for="metricSelect">Métrica</label>
+          <select id="metricSelect"></select>
+        </div>
+        <div class="control">
+          <label for="aggregatorSelect">Agregador</label>
+          <select id="aggregatorSelect">
+            <option value="sum">Suma</option>
+            <option value="avg">Promedio</option>
+            <option value="count">Conteo de filas</option>
+            <option value="max">Máximo</option>
+            <option value="min">Mínimo</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="chartTypeSelect">Tipo de gráfico</label>
+          <select id="chartTypeSelect">
+            <option value="bar">Barras</option>
+            <option value="line">Líneas</option>
+            <option value="pie">Torta</option>
+          </select>
+        </div>
+        <div class="control" style="flex: 1 1 220px;">
+          <label for="topNSlider">Cantidad de categorías</label>
+          <input type="range" id="topNSlider" min="3" max="15" value="6">
+          <span class="range-value">Top <span id="topNLabel">6</span></span>
+        </div>
+      </div>
+      <canvas id="chartCanvas" height="340"></canvas>
+    </section>
+
+    <section class="card hidden" id="tableCard">
+      <h2>Vista de datos</h2>
+      <div class="table-container" id="tableContainer">
+        <div class="placeholder">Los primeros registros de tu planilla aparecerán aquí cuando cargues un archivo.</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const uploadButton = document.getElementById('uploadButton');
+    const overviewCard = document.getElementById('overviewCard');
+    const metricsCard = document.getElementById('metricsCard');
+    const vizCard = document.getElementById('vizCard');
+    const tableCard = document.getElementById('tableCard');
+
+    const datasetSummary = document.getElementById('datasetSummary');
+    const datasetChips = document.getElementById('datasetChips');
+    const insightsList = document.getElementById('insightsList');
+    const metricsGrid = document.getElementById('metricsGrid');
+    const tableContainer = document.getElementById('tableContainer');
+
+    const dimensionSelect = document.getElementById('dimensionSelect');
+    const metricSelect = document.getElementById('metricSelect');
+    const aggregatorSelect = document.getElementById('aggregatorSelect');
+    const chartTypeSelect = document.getElementById('chartTypeSelect');
+    const topNSlider = document.getElementById('topNSlider');
+    const topNLabel = document.getElementById('topNLabel');
+    const metricControl = document.getElementById('metricControl');
+
+    let dataset = [];
+    let numericColumns = [];
+    let categoricalColumns = [];
+    let dateColumns = [];
+    let chartInstance = null;
+
+    const numberFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+
+    dropZone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      dropZone.classList.add('dragging');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragging');
+    });
+
+    dropZone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      dropZone.classList.remove('dragging');
+      const file = event.dataTransfer.files[0];
+      if (file) {
+        handleFile(file);
+      }
+    });
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    uploadButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        handleFile(file);
+      }
+    });
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      const extension = file.name.split('.').pop().toLowerCase();
+
+      if (extension === 'csv') {
+        reader.readAsText(file, 'utf-8');
+        reader.onload = () => {
+          const text = reader.result;
+          const workbook = XLSX.read(text, { type: 'string' });
+          processWorkbook(workbook);
+        };
+      } else {
+        reader.readAsArrayBuffer(file);
+        reader.onload = () => {
+          const data = new Uint8Array(reader.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          processWorkbook(workbook);
+        };
+      }
+    }
+
+    function processWorkbook(workbook) {
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      dataset = XLSX.utils.sheet_to_json(worksheet, { defval: null, raw: false });
+      if (!dataset.length) {
+        alert('No se encontraron datos en la hoja seleccionada.');
+        return;
+      }
+      analyzeDataset();
+      populateOverview();
+      populateMetrics();
+      populateControls();
+      renderTable();
+      revealSections();
+      updateChart();
+    }
+
+    function analyzeDataset() {
+      const columns = Object.keys(dataset[0] ?? {});
+      numericColumns = columns.filter((col) => dataset.some((row) => isNumeric(row[col])) && dataset.every((row) => row[col] === null || row[col] === '' || isNumeric(row[col])));
+      dateColumns = columns.filter((col) => dataset.some((row) => isDateLike(row[col])));
+      categoricalColumns = columns.filter((col) => !numericColumns.includes(col));
+    }
+
+    function populateOverview() {
+      const totalRows = dataset.length;
+      const totalColumns = Object.keys(dataset[0] ?? {}).length;
+      const numericCount = numericColumns.length;
+      const catCount = categoricalColumns.length;
+      const dateCount = dateColumns.length;
+
+      datasetSummary.textContent = `Se detectaron ${totalRows} registros y ${totalColumns} columnas. La IA prioriza ${numericCount} métricas numéricas y ${catCount} dimensiones cualitativas para generar el tablero.`;
+
+      datasetChips.innerHTML = '';
+      const chips = [
+        { label: 'Registros', value: numberFormatter.format(totalRows) },
+        { label: 'Columnas numéricas', value: numericCount },
+        { label: 'Columnas categóricas', value: catCount }
+      ];
+      if (dateCount) {
+        chips.push({ label: 'Fechas detectadas', value: dateCount });
+      }
+      chips.forEach(({ label, value }) => {
+        const span = document.createElement('span');
+        span.className = 'chip';
+        span.innerHTML = `<strong>${value}</strong> ${label}`;
+        datasetChips.appendChild(span);
+      });
+
+      generateInsights();
+    }
+
+    function generateInsights() {
+      insightsList.innerHTML = '';
+      const stats = computeNumericStats();
+      const insights = [];
+
+      if (stats.length) {
+        const topAvg = stats.reduce((max, item) => item.avg > max.avg ? item : max, stats[0]);
+        insights.push(`La métrica <strong>${topAvg.column}</strong> presenta un promedio de <strong>${formatNumber(topAvg.avg)}</strong>, con valores entre ${formatNumber(topAvg.min)} y ${formatNumber(topAvg.max)}.`);
+
+        const topGrowth = detectTemporalTrend();
+        if (topGrowth) {
+          insights.push(`En la dimensión temporal <strong>${topGrowth.dimension}</strong>, la métrica <strong>${topGrowth.metric}</strong> ${topGrowth.trend > 0 ? 'creció' : 'disminuyó'} ${Math.abs(topGrowth.trend).toFixed(1)}% entre el primer y el último período analizado.`);
+        }
+
+        const highVariance = stats.filter((item) => item.variabilityRatio >= 0.6);
+        if (highVariance.length) {
+          const hv = highVariance[0];
+          insights.push(`Se detectó alta variabilidad en <strong>${hv.column}</strong> (coeficiente ${hv.variabilityRatio.toFixed(2)}). Considerá segmentar la métrica para entender los motores de cambio.`);
+        }
+
+        const leadingCategory = detectLeadingCategory();
+        if (leadingCategory) {
+          insights.push(`La categoría <strong>${leadingCategory.category}</strong> concentra ${leadingCategory.share.toFixed(1)}% del total de ${leadingCategory.metric} y supera a la media por ${leadingCategory.gap.toFixed(1)} puntos.`);
+        }
+      } else {
+        insights.push('No se detectaron métricas numéricas. El tablero se enfocará en el conteo de registros por categoría.');
+      }
+
+      insights.forEach((text) => {
+        const li = document.createElement('li');
+        li.innerHTML = text;
+        insightsList.appendChild(li);
+      });
+    }
+
+    function computeNumericStats() {
+      return numericColumns.map((column) => {
+        const values = dataset
+          .map((row) => toNumber(row[column]))
+          .filter((value) => Number.isFinite(value));
+
+        const count = values.length;
+        const sum = values.reduce((acc, val) => acc + val, 0);
+        const avg = count ? sum / count : 0;
+        const min = count ? Math.min(...values) : 0;
+        const max = count ? Math.max(...values) : 0;
+        const sorted = [...values].sort((a, b) => a - b);
+        const median = count ? sorted[Math.floor(count / 2)] : 0;
+        const p90 = count ? sorted[Math.floor(count * 0.9)] : 0;
+        const variabilityRatio = avg !== 0 ? standardDeviation(values) / Math.abs(avg) : 0;
+
+        return { column, count, sum, avg, min, max, median, p90, variabilityRatio };
+      });
+    }
+
+    function populateMetrics() {
+      const stats = computeNumericStats();
+      metricsGrid.innerHTML = '';
+
+      if (!stats.length) {
+        const notice = document.createElement('div');
+        notice.className = 'placeholder';
+        notice.textContent = 'No se detectaron columnas numéricas. Utilizá las dimensiones para explorar el conteo de registros en el tablero.';
+        metricsGrid.appendChild(notice);
+        return;
+      }
+
+      stats.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'metric-card';
+        card.innerHTML = `
+          <span class="label">${item.column}</span>
+          <span class="value">${formatNumber(item.avg)}</span>
+          <span class="muted">Promedio · Mediana ${formatNumber(item.median)} · P90 ${formatNumber(item.p90)}</span>
+        `;
+        metricsGrid.appendChild(card);
+      });
+    }
+
+    function populateControls() {
+      populateDimensionSelect();
+      populateMetricSelect();
+      syncMetricControl();
+    }
+
+    function populateDimensionSelect() {
+      dimensionSelect.innerHTML = '';
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = 'Sin dimensión (total)';
+      dimensionSelect.appendChild(defaultOption);
+
+      categoricalColumns.forEach((column) => {
+        const option = document.createElement('option');
+        option.value = column;
+        option.textContent = column;
+        dimensionSelect.appendChild(option);
+      });
+
+      dateColumns.forEach((column) => {
+        if (!categoricalColumns.includes(column)) {
+          const option = document.createElement('option');
+          option.value = column;
+          option.textContent = `${column} (fecha)`;
+          dimensionSelect.appendChild(option);
+        }
+      });
+    }
+
+    function populateMetricSelect() {
+      metricSelect.innerHTML = '';
+      numericColumns.forEach((column) => {
+        const option = document.createElement('option');
+        option.value = column;
+        option.textContent = column;
+        metricSelect.appendChild(option);
+      });
+
+      if (!numericColumns.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Conteo de filas';
+        metricSelect.appendChild(option);
+        aggregatorSelect.value = 'count';
+      }
+    }
+
+    function renderTable() {
+      const columns = Object.keys(dataset[0] ?? {});
+      const maxRows = 150;
+      const rowsToRender = dataset.slice(0, maxRows);
+
+      if (!rowsToRender.length) {
+        tableContainer.innerHTML = '<div class="placeholder">No hay datos para mostrar.</div>';
+        return;
+      }
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+
+      columns.forEach((column) => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      rowsToRender.forEach((row) => {
+        const tr = document.createElement('tr');
+        columns.forEach((column) => {
+          const td = document.createElement('td');
+          td.textContent = formatCell(row[column]);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      tableContainer.innerHTML = '';
+      tableContainer.appendChild(table);
+    }
+
+    function revealSections() {
+      overviewCard.classList.remove('hidden');
+      metricsCard.classList.remove('hidden');
+      vizCard.classList.remove('hidden');
+      tableCard.classList.remove('hidden');
+    }
+
+    function updateChart() {
+      if (!dataset.length) return;
+
+      const dimension = dimensionSelect.value;
+      const metric = metricSelect.value;
+      const aggregator = aggregatorSelect.value;
+      const topN = Number(topNSlider.value);
+      const chartType = chartTypeSelect.value;
+
+      topNLabel.textContent = topNSlider.value;
+
+      const result = aggregateData({ dimension, metric, aggregator });
+      const sortedEntries = result.entries.sort((a, b) => b.value - a.value).slice(0, topN);
+      const labels = sortedEntries.map((entry) => entry.label ?? 'Sin valor');
+      const values = sortedEntries.map((entry) => entry.value);
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const palette = generatePalette(labels.length);
+      const baseColor = chartType === 'line' ? palette[0] : null;
+
+      chartInstance = new Chart(document.getElementById('chartCanvas'), {
+        type: chartType,
+        data: {
+          labels,
+          datasets: [{
+            label: buildDatasetLabel(metric, aggregator),
+            data: values,
+            backgroundColor: chartType === 'line' ? hexToTransparent(baseColor) : palette,
+            borderColor: chartType === 'line' ? baseColor : palette,
+            borderWidth: 2,
+            tension: 0.35,
+            fill: chartType === 'line' ? 'origin' : false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#cbd5f5'
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => `${context.dataset.label}: ${formatNumber(context.parsed.y ?? context.parsed)}`
+              }
+            }
+          },
+          scales: chartType === 'pie' ? {} : {
+            x: {
+              ticks: { color: '#cbd5f5' },
+              grid: { color: 'rgba(148, 163, 184, 0.1)' }
+            },
+            y: {
+              ticks: { color: '#cbd5f5', callback: (value) => formatNumber(value) },
+              grid: { color: 'rgba(148, 163, 184, 0.1)' }
+            }
+          }
+        }
+      });
+
+      syncMetricControl();
+    }
+
+    function syncMetricControl() {
+      const disable = aggregatorSelect.value === 'count' || !numericColumns.length;
+      metricControl.classList.toggle('hidden', disable);
+      metricSelect.disabled = disable;
+    }
+
+    function aggregateData({ dimension, metric, aggregator }) {
+      const map = new Map();
+      const useCount = aggregator === 'count' || !metric || !numericColumns.includes(metric);
+
+      dataset.forEach((row) => {
+        const key = dimension ? formatDimensionValue(row[dimension]) : 'Total';
+        if (!map.has(key)) {
+          map.set(key, []);
+        }
+        map.get(key).push(row);
+      });
+
+      const entries = Array.from(map.entries()).map(([label, rows]) => {
+        let value = 0;
+        if (useCount) {
+          value = rows.length;
+        } else {
+          const numbers = rows
+            .map((row) => toNumber(row[metric]))
+            .filter((val) => Number.isFinite(val));
+          if (!numbers.length) {
+            value = 0;
+          } else {
+            switch (aggregator) {
+              case 'sum':
+                value = numbers.reduce((acc, val) => acc + val, 0);
+                break;
+              case 'avg':
+                value = numbers.reduce((acc, val) => acc + val, 0) / numbers.length;
+                break;
+              case 'max':
+                value = Math.max(...numbers);
+                break;
+              case 'min':
+                value = Math.min(...numbers);
+                break;
+              default:
+                value = numbers.reduce((acc, val) => acc + val, 0);
+            }
+          }
+        }
+        return { label, value };
+      });
+
+      return { entries };
+    }
+
+    function detectTemporalTrend() {
+      if (!dateColumns.length || !numericColumns.length) {
+        return null;
+      }
+      const dateColumn = dateColumns[0];
+      const metric = numericColumns[0];
+
+      const rows = dataset
+        .map((row) => {
+          const date = toDate(row[dateColumn]);
+          const value = toNumber(row[metric]);
+          if (!date || !Number.isFinite(value)) return null;
+          return { date, value };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.date - b.date);
+
+      if (rows.length < 3) return null;
+      const first = rows[0];
+      const last = rows[rows.length - 1];
+      if (Math.abs(first.value) < 1e-9 || Math.abs(last.value) < 1e-9) return null;
+      const trend = ((last.value - first.value) / Math.abs(first.value)) * 100;
+      return { dimension: dateColumn, metric, trend };
+    }
+
+    function detectLeadingCategory() {
+      if (!categoricalColumns.length || !numericColumns.length) {
+        return null;
+      }
+      const dimension = categoricalColumns[0];
+      const metric = numericColumns[0];
+
+      const aggregated = aggregateData({ dimension, metric, aggregator: 'sum' }).entries;
+      if (!aggregated.length) return null;
+      const total = aggregated.reduce((acc, item) => acc + item.value, 0);
+      if (!total) return null;
+
+      const sorted = aggregated.sort((a, b) => b.value - a.value);
+      const leader = sorted[0];
+      const averageShare = 100 / aggregated.length;
+      const share = (leader.value / total) * 100;
+      const gap = share - averageShare;
+      return { category: leader.label, metric, share, gap };
+    }
+
+    function buildDatasetLabel(metric, aggregator) {
+      if (aggregator === 'count' || !metric) return 'Conteo de filas';
+      const map = {
+        sum: 'Suma',
+        avg: 'Promedio',
+        max: 'Máximo',
+        min: 'Mínimo'
+      };
+      return `${map[aggregator] ?? 'Suma'} de ${metric}`;
+    }
+
+    function formatCell(value) {
+      if (value === null || value === undefined || value === '') return '—';
+      if (isNumeric(value)) return formatNumber(toNumber(value));
+      const asDate = toDate(value);
+      if (asDate) return asDate.toLocaleDateString();
+      return value;
+    }
+
+    function formatNumber(value) {
+      if (!Number.isFinite(value)) return '—';
+      return numberFormatter.format(value);
+    }
+
+    function toNumber(value) {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+      if (typeof value === 'string') {
+        const cleaned = value
+          .replace(/[%$€£]/g, '')
+          .replace(/\s+/g, '')
+          .trim();
+        if (!cleaned) return NaN;
+        let normalized = cleaned;
+        const hasComma = cleaned.includes(',');
+        const hasDot = cleaned.includes('.');
+        if (hasComma && hasDot) {
+          normalized = cleaned.replace(/\./g, '').replace(',', '.');
+        } else if (hasComma && !hasDot) {
+          normalized = cleaned.replace(',', '.');
+        }
+        const parsed = parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : NaN;
+      }
+      return NaN;
+    }
+
+    function isNumeric(value) {
+      if (value === null || value === '') return false;
+      return Number.isFinite(toNumber(value));
+    }
+
+    function isDateLike(value) {
+      return Boolean(toDate(value));
+    }
+
+    function toDate(value) {
+      if (value instanceof Date && !isNaN(value)) {
+        return value;
+      }
+      if (typeof value === 'number') {
+        if (value > 25569) {
+          const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+          const millis = value * 86400 * 1000;
+          const date = new Date(excelEpoch.getTime() + millis);
+          if (!isNaN(date)) {
+            return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+          }
+        }
+        return null;
+      }
+      if (typeof value === 'string') {
+        const normalized = value.replace(/"/g, '').trim();
+        if (!normalized) return null;
+        const parsed = Date.parse(normalized);
+        if (!Number.isNaN(parsed)) {
+          return new Date(parsed);
+        }
+      }
+      return null;
+    }
+
+    function formatDimensionValue(value) {
+      if (value === null || value === undefined || value === '') return 'Sin valor';
+      const date = toDate(value);
+      if (date) {
+        return date.toLocaleDateString();
+      }
+      return String(value);
+    }
+
+    function standardDeviation(values) {
+      const n = values.length;
+      if (!n) return 0;
+      const mean = values.reduce((acc, val) => acc + val, 0) / n;
+      const variance = values.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / n;
+      return Math.sqrt(variance);
+    }
+
+    function generatePalette(count) {
+      const baseColors = [
+        '#38bdf8', '#a855f7', '#f97316', '#22d3ee', '#facc15', '#34d399',
+        '#fb7185', '#60a5fa', '#fbbf24', '#f472b6', '#2dd4bf', '#a3e635'
+      ];
+      if (count <= baseColors.length) {
+        return baseColors.slice(0, count);
+      }
+      const palette = [];
+      for (let i = 0; i < count; i++) {
+        palette.push(baseColors[i % baseColors.length]);
+      }
+      return palette;
+    }
+
+    function hexToTransparent(hex, alpha = 0.28) {
+      if (!hex) return 'rgba(56, 189, 248, 0.25)';
+      const bigint = parseInt(hex.replace('#', ''), 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    dimensionSelect.addEventListener('change', updateChart);
+    metricSelect.addEventListener('change', updateChart);
+    aggregatorSelect.addEventListener('change', () => {
+      syncMetricControl();
+      updateChart();
+    });
+    chartTypeSelect.addEventListener('change', updateChart);
+    topNSlider.addEventListener('input', () => {
+      topNLabel.textContent = topNSlider.value;
+      updateChart();
+    });
+  </script>
+</body>
+</html>
