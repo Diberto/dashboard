@@ -1,1 +1,1016 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diseñador de Packaging 3D</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg-color: #0f172a;
+            --panel-color: rgba(15, 23, 42, 0.88);
+            --text-color: #f1f5f9;
+            --accent: #38bdf8;
+            --accent-strong: #0ea5e9;
+            --border-color: rgba(148, 163, 184, 0.35);
+        }
 
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.25), transparent 45%),
+                        radial-gradient(circle at bottom right, rgba(167, 139, 250, 0.2), transparent 50%),
+                        var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 1.5rem clamp(1rem, 3vw, 3rem);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            margin: 0;
+        }
+
+        header p {
+            margin: 0.25rem 0 0;
+            color: rgba(226, 232, 240, 0.72);
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+            gap: clamp(1rem, 2vw, 2rem);
+            padding: 0 clamp(1rem, 3vw, 3rem) clamp(1.5rem, 3vw, 3rem);
+        }
+
+        @media (max-width: 1080px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .viewer {
+            position: relative;
+            border-radius: 22px;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            background: radial-gradient(circle at 50% 10%, rgba(148, 163, 184, 0.15), transparent 55%),
+                        rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 25px 65px rgba(15, 23, 42, 0.65);
+            min-height: 480px;
+        }
+
+        canvas#three-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .floating-stats {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(15, 23, 42, 0.72);
+            padding: 0.75rem 1rem;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .floating-stats strong {
+            color: var(--accent);
+        }
+
+        .panel {
+            background: var(--panel-color);
+            border-radius: 22px;
+            padding: clamp(1rem, 2vw, 1.75rem);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .panel::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 999px;
+        }
+
+        section.control-block {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        section.control-block h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: rgba(226, 232, 240, 0.9);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .field-group {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        label {
+            font-size: 0.82rem;
+            letter-spacing: 0.03em;
+            color: rgba(226, 232, 240, 0.75);
+        }
+
+        select, input[type="number"], input[type="text"] {
+            appearance: none;
+            border: 1px solid var(--border-color);
+            background: rgba(15, 23, 42, 0.55);
+            color: var(--text-color);
+            border-radius: 12px;
+            padding: 0.65rem 0.75rem;
+            font-size: 0.95rem;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        select:focus, input[type="number"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+        }
+
+        button {
+            border: none;
+            border-radius: 12px;
+            padding: 0.65rem 0.85rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: #0f172a;
+        }
+
+        button.secondary {
+            background: rgba(15, 23, 42, 0.8);
+            color: rgba(226, 232, 240, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(14, 165, 233, 0.35);
+        }
+
+        button.secondary:hover {
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
+        }
+
+        input[type="file"] {
+            font-size: 0.85rem;
+            color: rgba(226, 232, 240, 0.85);
+        }
+
+        .texture-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .texture-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            background: rgba(56, 189, 248, 0.12);
+            color: rgba(56, 189, 248, 0.95);
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+        }
+
+        .divider {
+            height: 1px;
+            background: rgba(148, 163, 184, 0.2);
+            margin: 0.25rem 0;
+        }
+
+        .note {
+            font-size: 0.78rem;
+            color: rgba(148, 163, 184, 0.85);
+            line-height: 1.4;
+        }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+        }
+
+        .radio-group label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+
+        .radio-group input[type="radio"] {
+            accent-color: var(--accent);
+        }
+
+        footer {
+            padding: 1rem clamp(1rem, 3vw, 3rem);
+            text-align: center;
+            color: rgba(148, 163, 184, 0.75);
+            font-size: 0.8rem;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Studio Packaging 3D</h1>
+            <p>Prototipado de packaging, texturizado e intercambios 3D inspirados en Pacdora.</p>
+        </div>
+        <div class="chip">Beta interactiva</div>
+    </header>
+    <main>
+        <div class="viewer">
+            <canvas id="three-canvas"></canvas>
+            <div class="floating-stats" id="stats"></div>
+        </div>
+        <aside class="panel">
+            <section class="control-block">
+                <h2>Tipo de Packaging</h2>
+                <div class="field">
+                    <label for="packaging-type">Selecciona una tipología</label>
+                    <select id="packaging-type">
+                        <option value="box">Caja estándar (RSC)</option>
+                        <option value="mailer">Caja Mailer</option>
+                        <option value="display">Caja Display</option>
+                        <option value="tube">Tubo cilíndrico</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="preset-select">Modelos predefinidos</label>
+                    <select id="preset-select"></select>
+                </div>
+                <div class="field-group" id="dimension-fields">
+                    <div class="field">
+                        <label for="width-input">Ancho (mm)</label>
+                        <input type="number" id="width-input" min="30" value="180">
+                    </div>
+                    <div class="field">
+                        <label for="height-input">Alto (mm)</label>
+                        <input type="number" id="height-input" min="30" value="120">
+                    </div>
+                    <div class="field">
+                        <label for="depth-input">Profundidad (mm)</label>
+                        <input type="number" id="depth-input" min="30" value="80">
+                    </div>
+                </div>
+                <div class="radio-group" id="unit-group">
+                    <label><input type="radio" name="units" value="mm" checked> Milímetros</label>
+                    <label><input type="radio" name="units" value="cm"> Centímetros</label>
+                </div>
+                <button id="update-dimensions">Actualizar modelo</button>
+            </section>
+            <section class="control-block">
+                <h2>Texturas</h2>
+                <div class="field">
+                    <label for="texture-global">Aplicar textura completa</label>
+                    <input type="file" id="texture-global" accept="image/*">
+                </div>
+                <div class="texture-grid" id="texture-faces"></div>
+                <div class="field-group">
+                    <div class="field">
+                        <label>Repetición</label>
+                        <div class="action-row">
+                            <input type="number" id="repeat-x" value="1" min="1" step="0.5" title="Repeat X">
+                            <input type="number" id="repeat-y" value="1" min="1" step="0.5" title="Repeat Y">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Offset</label>
+                        <div class="action-row">
+                            <input type="number" id="offset-x" value="0" step="0.05" title="Offset X">
+                            <input type="number" id="offset-y" value="0" step="0.05" title="Offset Y">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="rotation">Rotación (°)</label>
+                        <input type="number" id="rotation" value="0" step="5">
+                    </div>
+                </div>
+                <div class="action-row">
+                    <button class="secondary" id="clear-textures">Limpiar</button>
+                </div>
+                <p class="note">Puedes cargar texturas diferentes por cara para prototipos complejos. Los ajustes se aplican a todas las caras activas.</p>
+            </section>
+            <section class="control-block">
+                <h2>Plantillas 2D</h2>
+                <div class="action-row">
+                    <button class="secondary" id="download-template">Descargar PNG</button>
+                    <button class="secondary" id="download-template-pdf">Descargar PDF</button>
+                </div>
+                <p class="note">Genera el troquel base según las medidas actuales para diseñar en tu editor favorito.</p>
+            </section>
+            <section class="control-block">
+                <h2>Importar / Exportar</h2>
+                <div class="field">
+                    <label for="model-import">Importar modelo 3D (GLB/GLTF/USD/USDA)</label>
+                    <input type="file" id="model-import" accept=".glb,.gltf,.usd,.usda">
+                </div>
+                <div class="action-row">
+                    <button class="secondary" id="export-gltf">Exportar GLTF</button>
+                    <button class="secondary" id="export-glb">Exportar GLB</button>
+                </div>
+                <div class="action-row">
+                    <button class="secondary" id="export-usd">Exportar USD</button>
+                    <button class="secondary" id="export-usda">Exportar USDA</button>
+                </div>
+                <div class="action-row">
+                    <button class="secondary" id="export-pdf">Exportar vista PDF</button>
+                </div>
+                <p class="note">Los exportadores GLTF/GLB utilizan el pipeline estándar de Three.js. Los USD/USDA generan una malla simplificada compatible con editores básicos.</p>
+            </section>
+        </aside>
+    </main>
+    <footer>
+        Construido con Three.js, GLTF y utilidades personalizadas para intercambio USD y plantillas 2D.
+    </footer>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.155.0';
+        import { OrbitControls } from 'https://cdn.skypack.dev/three@0.155.0/examples/jsm/controls/OrbitControls.js';
+        import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.155.0/examples/jsm/loaders/GLTFLoader.js';
+        import { GLTFExporter } from 'https://cdn.skypack.dev/three@0.155.0/examples/jsm/exporters/GLTFExporter.js';
+
+        const packagingPresets = {
+            box: [
+                { id: 'box-small', name: 'Caja Pequeña 180x120x80', dims: { width: 180, height: 120, depth: 80 } },
+                { id: 'box-medium', name: 'Caja Mediana 250x180x120', dims: { width: 250, height: 180, depth: 120 } },
+                { id: 'box-large', name: 'Caja Grande 320x220x150', dims: { width: 320, height: 220, depth: 150 } }
+            ],
+            mailer: [
+                { id: 'mailer-slim', name: 'Mailer Slim 220x160x40', dims: { width: 220, height: 40, depth: 160 } },
+                { id: 'mailer-standard', name: 'Mailer Estándar 260x80x180', dims: { width: 260, height: 80, depth: 180 } }
+            ],
+            display: [
+                { id: 'display-stand', name: 'Display Counter 230x260x150', dims: { width: 230, height: 260, depth: 150 } },
+                { id: 'display-mini', name: 'Display Mini 160x200x120', dims: { width: 160, height: 200, depth: 120 } }
+            ],
+            tube: [
+                { id: 'tube-slim', name: 'Tubo Slim Ø80x220', dims: { width: 80, height: 220, depth: 80 } },
+                { id: 'tube-wide', name: 'Tubo Ancho Ø120x180', dims: { width: 120, height: 180, depth: 120 } }
+            ]
+        };
+
+        const canvas = document.getElementById('three-canvas');
+        const stats = document.getElementById('stats');
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+
+        const scene = new THREE.Scene();
+        scene.background = null;
+
+        const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+        camera.position.set(2.5, 1.8, 2.6);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 0.4;
+        controls.maxDistance = 6;
+        controls.maxPolarAngle = Math.PI * 0.49;
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1f2937, 0.85);
+        scene.add(hemiLight);
+
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        keyLight.position.set(4, 6, 8);
+        keyLight.castShadow = true;
+        scene.add(keyLight);
+
+        const rimLight = new THREE.DirectionalLight(0x93c5fd, 0.35);
+        rimLight.position.set(-4, 3, -5);
+        scene.add(rimLight);
+
+        const floorGeo = new THREE.CircleGeometry(6, 64);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, transparent: true, opacity: 0.65, roughness: 0.9, metalness: 0.05 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.receiveShadow = true;
+        floor.rotation.x = -Math.PI / 2;
+        scene.add(floor);
+
+        let packagingMesh;
+        let currentGeometryData = { width: 180, height: 120, depth: 80 };
+        let activeUnit = 'mm';
+        const loader = new GLTFLoader();
+        const exporter = new GLTFExporter();
+        const textureLoader = new THREE.TextureLoader();
+
+        const faceInputs = ['Frontal', 'Posterior', 'Derecha', 'Izquierda', 'Superior', 'Inferior'];
+        const textureFaceContainer = document.getElementById('texture-faces');
+        const faceTextureMaps = new Array(6).fill(null);
+
+        function createTextureInputs() {
+            textureFaceContainer.innerHTML = '';
+            faceInputs.forEach((label, index) => {
+                const wrapper = document.createElement('label');
+                wrapper.innerHTML = `<span>${label}</span><input type="file" data-face="${index}" accept="image/*">`;
+                textureFaceContainer.appendChild(wrapper);
+            });
+        }
+
+        createTextureInputs();
+
+        function createMaterialSet() {
+            return new Array(6).fill(null).map(() => new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4, metalness: 0.02 }));
+        }
+
+        let currentMaterials = createMaterialSet();
+
+        function createPackagingGeometry(type, dims) {
+            const { width, height, depth } = dims;
+            const geometryUnitFactor = activeUnit === 'cm' ? 0.01 : 0.001;
+            const w = width * geometryUnitFactor;
+            const h = height * geometryUnitFactor;
+            const d = depth * geometryUnitFactor;
+
+            switch (type) {
+                case 'mailer': {
+                    const shape = new THREE.Shape();
+                    const halfW = w / 2;
+                    const bodyDepth = d * 0.6;
+                    const flapDepth = d - bodyDepth;
+                    shape.moveTo(-halfW, 0);
+                    shape.lineTo(halfW, 0);
+                    shape.lineTo(halfW, h * 0.4);
+                    shape.lineTo(halfW * 0.85, h * 0.5);
+                    shape.lineTo(halfW, h * 0.6);
+                    shape.lineTo(halfW, h);
+                    shape.lineTo(-halfW, h);
+                    shape.lineTo(-halfW, h * 0.6);
+                    shape.lineTo(-halfW * 0.85, h * 0.5);
+                    shape.lineTo(-halfW, h * 0.4);
+                    shape.lineTo(-halfW, 0);
+
+                    const extrudeSettings = {
+                        depth: bodyDepth,
+                        bevelEnabled: false
+                    };
+                    const extrudeGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                    extrudeGeo.translate(0, -h * 0.5, -bodyDepth * 0.5);
+                    return extrudeGeo;
+                }
+                case 'display': {
+                    const box = new THREE.BoxGeometry(w, h, d);
+                    const cutHeight = h * 0.4;
+                    const positions = box.attributes.position;
+                    for (let i = 0; i < positions.count; i++) {
+                        const y = positions.getY(i);
+                        const x = positions.getX(i);
+                        if (y > 0 && x > 0) {
+                            positions.setY(i, Math.max(y - cutHeight * (x / (w / 2)), 0.05));
+                        }
+                        if (y > 0 && x < 0) {
+                            positions.setY(i, Math.max(y - cutHeight * (-x / (w / 2)), 0.05));
+                        }
+                    }
+                    positions.needsUpdate = true;
+                    box.computeVertexNormals();
+                    return box;
+                }
+                case 'tube': {
+                    const radius = w / 2;
+                    const cylinder = new THREE.CylinderGeometry(radius, radius, h, 64, 1, false);
+                    return cylinder;
+                }
+                case 'box':
+                default:
+                    return new THREE.BoxGeometry(w, h, d);
+            }
+        }
+
+        function createPackagingMesh() {
+            const type = document.getElementById('packaging-type').value;
+            const dims = { ...currentGeometryData };
+            const geometry = createPackagingGeometry(type, dims);
+            geometry.computeBoundingBox();
+            if (!currentMaterials || currentMaterials.length < 6) {
+                currentMaterials = createMaterialSet();
+            }
+            if (packagingMesh && packagingMesh.isMesh) {
+                scene.remove(packagingMesh);
+                packagingMesh.geometry.dispose();
+            } else if (packagingMesh) {
+                scene.remove(packagingMesh);
+            }
+            packagingMesh = new THREE.Mesh(geometry, currentMaterials);
+            packagingMesh.castShadow = true;
+            packagingMesh.receiveShadow = true;
+            scene.add(packagingMesh);
+            updateStats();
+        }
+
+        function updateStats() {
+            if (!packagingMesh) return;
+            const bbox = new THREE.Box3().setFromObject(packagingMesh);
+            const size = bbox.getSize(new THREE.Vector3());
+            const area = size.x * size.z;
+            const volume = size.x * size.y * size.z;
+            stats.innerHTML = `Dimensiones: ${formatSize(size)}<br>Área base: ${(area).toFixed(3)} m²<br>Volumen: ${(volume).toFixed(3)} m³`;
+        }
+
+        function formatSize(size) {
+            const factor = activeUnit === 'cm' ? 100 : 1000;
+            const unit = activeUnit;
+            return `${(size.x * factor).toFixed(1)} × ${(size.y * factor).toFixed(1)} × ${(size.z * factor).toFixed(1)} ${unit}`;
+        }
+
+        function resizeRendererToDisplaySize() {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            if (canvas.width !== width || canvas.height !== height) {
+                renderer.setSize(width, height, false);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            }
+        }
+
+        function render() {
+            resizeRendererToDisplaySize();
+            controls.update();
+            renderer.render(scene, camera);
+            requestAnimationFrame(render);
+        }
+
+        render();
+        createPackagingMesh();
+
+        function updatePresetOptions(type) {
+            const presetSelect = document.getElementById('preset-select');
+            presetSelect.innerHTML = '';
+            const presets = packagingPresets[type] || [];
+            presets.forEach(preset => {
+                const option = document.createElement('option');
+                option.value = preset.id;
+                option.textContent = preset.name;
+                presetSelect.appendChild(option);
+            });
+            if (presets.length) {
+                presetSelect.value = presets[0].id;
+                applyPreset(presets[0]);
+            }
+        }
+
+        function updateDimensionInputs() {
+            document.getElementById('width-input').value = currentGeometryData.width.toFixed(2).replace(/\.00$/, '');
+            document.getElementById('height-input').value = currentGeometryData.height.toFixed(2).replace(/\.00$/, '');
+            document.getElementById('depth-input').value = currentGeometryData.depth.toFixed(2).replace(/\.00$/, '');
+            updateDimensionLabels();
+        }
+
+        function updateDimensionLabels() {
+            const unit = activeUnit;
+            document.querySelector('label[for="width-input"]').textContent = `Ancho (${unit})`;
+            document.querySelector('label[for="height-input"]').textContent = `Alto (${unit})`;
+            document.querySelector('label[for="depth-input"]').textContent = `Profundidad (${unit})`;
+        }
+
+        function applyPreset(preset) {
+            let { width, height, depth } = preset.dims;
+            if (activeUnit === 'cm') {
+                width /= 10;
+                height /= 10;
+                depth /= 10;
+            }
+            currentGeometryData = { width, height, depth };
+            updateDimensionInputs();
+            createPackagingMesh();
+        }
+
+        document.getElementById('packaging-type').addEventListener('change', (event) => {
+            const type = event.target.value;
+            updatePresetOptions(type);
+            createPackagingMesh();
+        });
+
+        document.getElementById('preset-select').addEventListener('change', (event) => {
+            const type = document.getElementById('packaging-type').value;
+            const preset = (packagingPresets[type] || []).find(p => p.id === event.target.value);
+            if (preset) {
+                applyPreset(preset);
+            }
+        });
+
+        document.getElementById('update-dimensions').addEventListener('click', () => {
+            const width = parseFloat(document.getElementById('width-input').value);
+            const height = parseFloat(document.getElementById('height-input').value);
+            const depth = parseFloat(document.getElementById('depth-input').value);
+            if ([width, height, depth].some(value => isNaN(value) || value <= 0)) {
+                alert('Introduce medidas válidas mayores a cero.');
+                return;
+            }
+            currentGeometryData = { width, height, depth };
+            updateDimensionInputs();
+            createPackagingMesh();
+        });
+
+        document.querySelectorAll('input[name="units"]').forEach(radio => {
+            radio.addEventListener('change', (event) => {
+                const newUnit = event.target.value;
+                if (newUnit === activeUnit) return;
+                const factor = newUnit === 'cm' ? 0.1 : 10;
+                currentGeometryData = {
+                    width: currentGeometryData.width * factor,
+                    height: currentGeometryData.height * factor,
+                    depth: currentGeometryData.depth * factor
+                };
+                activeUnit = newUnit;
+                updateDimensionInputs();
+                createPackagingMesh();
+            });
+        });
+
+        function loadTextureFromFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const texture = textureLoader.load(reader.result, () => {
+                        texture.wrapS = THREE.RepeatWrapping;
+                        texture.wrapT = THREE.RepeatWrapping;
+                        resolve(texture);
+                    }, undefined, reject);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        document.getElementById('texture-global').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const texture = await loadTextureFromFile(file);
+            applyTextureToAllFaces(texture);
+        });
+
+        textureFaceContainer.addEventListener('change', async (event) => {
+            const input = event.target;
+            if (input.tagName !== 'INPUT') return;
+            const faceIndex = Number(input.dataset.face);
+            const file = input.files[0];
+            if (!file) return;
+            const texture = await loadTextureFromFile(file);
+            applyTextureToFace(faceIndex, texture);
+        });
+
+        document.getElementById('clear-textures').addEventListener('click', () => {
+            currentMaterials.forEach((material, index) => {
+                material.map = null;
+                material.needsUpdate = true;
+                faceTextureMaps[index] = null;
+            });
+            document.getElementById('texture-global').value = '';
+            createTextureInputs();
+        });
+
+        function applyTextureToFace(faceIndex, texture) {
+            faceTextureMaps[faceIndex] = texture;
+            currentMaterials[faceIndex].map = texture;
+            updateTextureSettings();
+        }
+
+        function applyTextureToAllFaces(texture) {
+            currentMaterials.forEach((material, index) => {
+                material.map = texture;
+                faceTextureMaps[index] = texture;
+            });
+            updateTextureSettings();
+        }
+
+        function updateTextureSettings() {
+            const repeatX = parseFloat(document.getElementById('repeat-x').value) || 1;
+            const repeatY = parseFloat(document.getElementById('repeat-y').value) || 1;
+            const offsetX = parseFloat(document.getElementById('offset-x').value) || 0;
+            const offsetY = parseFloat(document.getElementById('offset-y').value) || 0;
+            const rotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotation').value) || 0);
+            currentMaterials.forEach((material) => {
+                if (material.map) {
+                    material.map.repeat.set(repeatX, repeatY);
+                    material.map.offset.set(offsetX, offsetY);
+                    material.map.rotation = rotation;
+                    material.map.center.set(0.5, 0.5);
+                    material.map.needsUpdate = true;
+                }
+            });
+        }
+
+        ['repeat-x', 'repeat-y', 'offset-x', 'offset-y', 'rotation'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateTextureSettings);
+        });
+
+        async function generateTemplateCanvas() {
+            const { width, height, depth } = currentGeometryData;
+            const canvas2d = document.createElement('canvas');
+            canvas2d.width = 1600;
+            canvas2d.height = 1200;
+            const ctx = canvas2d.getContext('2d');
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 0, canvas2d.width, canvas2d.height);
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([12, 10]);
+            ctx.strokeRect(100, 100, width * 2, height * 2);
+            ctx.setLineDash([]);
+            const scale = 2;
+            const originX = 200;
+            const originY = 150;
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '24px Inter';
+            ctx.fillText('Plantilla desplegada (troquel) - Caja', 100, 60);
+            ctx.font = '18px Inter';
+            ctx.fillText(`Medidas: ${width} × ${height} × ${depth} ${activeUnit}`, 100, 90);
+
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 3;
+            const drawRect = (x, y, w, h, label) => {
+                ctx.strokeRect(originX + x * scale, originY + y * scale, w * scale, h * scale);
+                ctx.fillStyle = '#475569';
+                ctx.fillText(label, originX + x * scale + 10, originY + y * scale + 24);
+            };
+
+            // Simple net: center, left, right, top, bottom
+            drawRect(depth, depth, width, height, 'Frontal');
+            ctx.setLineDash([8, 6]);
+            ctx.strokeRect(originX + depth * scale, originY + (depth + height) * scale, width * scale, depth * scale);
+            ctx.fillText('Solapa inferior', originX + depth * scale + 10, originY + (depth + height) * scale + 24);
+            ctx.strokeRect(originX + depth * scale, originY + (depth - depth) * scale, width * scale, depth * scale);
+            ctx.fillText('Solapa superior', originX + depth * scale + 10, originY + (depth - depth) * scale + 24);
+            ctx.setLineDash([]);
+            drawRect(0, depth, depth, height, 'Lado Izquierdo');
+            drawRect(depth + width, depth, depth, height, 'Lado Derecho');
+            drawRect(depth * 2 + width, depth, depth, height, 'Aleta pegado');
+
+            return canvas2d;
+        }
+
+        document.getElementById('download-template').addEventListener('click', async () => {
+            const canvas2d = await generateTemplateCanvas();
+            const link = document.createElement('a');
+            link.download = 'plantilla-packaging.png';
+            link.href = canvas2d.toDataURL('image/png');
+            link.click();
+        });
+
+        document.getElementById('download-template-pdf').addEventListener('click', async () => {
+            const canvas2d = await generateTemplateCanvas();
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [canvas2d.width, canvas2d.height] });
+            pdf.addImage(canvas2d.toDataURL('image/png'), 'PNG', 0, 0, canvas2d.width, canvas2d.height);
+            pdf.save('plantilla-packaging.pdf');
+        });
+
+        function exportGLTF(options = {}) {
+            return new Promise((resolve, reject) => {
+                exporter.parse(scene, (result) => {
+                    if (options.binary) {
+                        const blob = new Blob([result], { type: 'application/octet-stream' });
+                        resolve(blob);
+                    } else {
+                        const output = JSON.stringify(result, null, 2);
+                        const blob = new Blob([output], { type: 'application/json' });
+                        resolve(blob);
+                    }
+                }, { trs: true, binary: options.binary });
+            });
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        document.getElementById('export-gltf').addEventListener('click', async () => {
+            const blob = await exportGLTF();
+            downloadBlob(blob, 'packaging.gltf');
+        });
+
+        document.getElementById('export-glb').addEventListener('click', async () => {
+            const blob = await exportGLTF({ binary: true });
+            downloadBlob(blob, 'packaging.glb');
+        });
+
+        function geometryToUSD(object) {
+            const points = [];
+            const faceVertexCounts = [];
+            const faceVertexIndices = [];
+            let index = 0;
+
+            object.traverse((child) => {
+                if (!child.isMesh) return;
+                const geom = child.geometry.clone().toNonIndexed();
+                geom.applyMatrix4(child.matrixWorld);
+                const position = geom.getAttribute('position');
+                for (let i = 0; i < position.count; i += 3) {
+                    const ax = position.getX(i);
+                    const ay = position.getY(i);
+                    const az = position.getZ(i);
+                    const bx = position.getX(i + 1);
+                    const by = position.getY(i + 1);
+                    const bz = position.getZ(i + 1);
+                    const cx = position.getX(i + 2);
+                    const cy = position.getY(i + 2);
+                    const cz = position.getZ(i + 2);
+                    points.push([ax, ay, az], [bx, by, bz], [cx, cy, cz]);
+                    faceVertexCounts.push(3);
+                    faceVertexIndices.push(index++, index++, index++);
+                }
+                geom.dispose();
+            });
+
+            if (!points.length) {
+                return null;
+            }
+
+            const usdLines = [];
+            usdLines.push('#usda 1.0');
+            usdLines.push('def Xform "Root" {');
+            usdLines.push('    def Mesh "Packaging" {');
+            usdLines.push('        int[] faceVertexCounts = [' + faceVertexCounts.join(', ') + ']');
+            usdLines.push('        int[] faceVertexIndices = [' + faceVertexIndices.join(', ') + ']');
+            usdLines.push('        point3f[] points = [');
+            points.forEach((p, idx) => {
+                usdLines.push(`            (${p[0].toFixed(5)}, ${p[1].toFixed(5)}, ${p[2].toFixed(5)})${idx < points.length - 1 ? ',' : ''}`);
+            });
+            usdLines.push('        ]');
+            usdLines.push('    }');
+            usdLines.push('}');
+            return usdLines.join('\n');
+        }
+
+        function exportUSD(asUSDA = false) {
+            if (!packagingMesh) return;
+            const usdText = geometryToUSD(packagingMesh);
+            if (!usdText) {
+                alert('No se encontraron datos de malla para exportar.');
+                return;
+            }
+            const blob = new Blob([usdText], { type: 'text/plain' });
+            downloadBlob(blob, asUSDA ? 'packaging.usda' : 'packaging.usd');
+        }
+
+        document.getElementById('export-usd').addEventListener('click', () => exportUSD(false));
+        document.getElementById('export-usda').addEventListener('click', () => exportUSD(true));
+
+        document.getElementById('export-pdf').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [canvas.width, canvas.height] });
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            pdf.addImage(dataURL, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save('render-packaging.pdf');
+        });
+
+        function parseUSD(text) {
+            const pointRegex = /\(([\d\.-]+),\s*([\d\.-]+),\s*([\d\.-]+)\)/g;
+            const points = [];
+            let match;
+            while ((match = pointRegex.exec(text)) !== null) {
+                points.push(parseFloat(match[1]), parseFloat(match[2]), parseFloat(match[3]));
+            }
+            if (!points.length) return null;
+            const geometry = new THREE.BufferGeometry();
+            const positionArray = new Float32Array(points);
+            geometry.setAttribute('position', new THREE.BufferAttribute(positionArray, 3));
+            geometry.computeVertexNormals();
+            return geometry;
+        }
+
+        document.getElementById('model-import').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const extension = file.name.split('.').pop().toLowerCase();
+            if (extension === 'glb' || extension === 'gltf') {
+                const arrayBuffer = await file.arrayBuffer();
+                loader.parse(arrayBuffer, '', (gltf) => {
+                    replaceMeshWithImported(gltf.scene);
+                }, (error) => console.error(error));
+            } else if (extension === 'usd' || extension === 'usda') {
+                const text = await file.text();
+                const geometry = parseUSD(text);
+                if (geometry) {
+                    replaceMeshWithGeometry(geometry);
+                } else {
+                    alert('No se pudo interpretar el archivo USD/USDA.');
+                }
+            } else {
+                alert('Formato no soportado.');
+            }
+        });
+
+        function replaceMeshWithImported(object3d) {
+            const box = new THREE.Box3().setFromObject(object3d);
+            const center = box.getCenter(new THREE.Vector3());
+            object3d.position.sub(center);
+            if (packagingMesh) {
+                scene.remove(packagingMesh);
+            }
+            packagingMesh = object3d;
+            currentMaterials = [];
+            scene.add(packagingMesh);
+            updateStats();
+        }
+
+        function replaceMeshWithGeometry(geometry) {
+            const materials = createMaterialSet();
+            const mesh = new THREE.Mesh(geometry, materials);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.remove(packagingMesh);
+            packagingMesh = mesh;
+            currentMaterials = materials;
+            scene.add(packagingMesh);
+            updateStats();
+        }
+
+        window.addEventListener('resize', () => {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            renderer.setSize(width, height, false);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        });
+
+        updatePresetOptions('box');
+    </script>
+</body>
+</html>
